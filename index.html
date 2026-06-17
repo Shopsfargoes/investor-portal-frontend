@@ -1,1 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investor Portal · Portfolio Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
 
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="topbar__mark">VR</span>
+      <span class="topbar__name">Vault &amp; Reach Capital</span>
+    </div>
+    <div class="topbar__meta">
+      <span class="topbar__label">Logged in as</span>
+      <span class="topbar__user" id="investor-name">—</span>
+      <button class="topbar__logout" id="logout-btn" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main class="shell">
+
+    <!-- Status / error banner -->
+    <div class="banner" id="status-banner" hidden>
+      <p class="banner__text" id="status-text"></p>
+      <button class="banner__retry" id="retry-btn" type="button">Retry</button>
+    </div>
+
+    <!-- Hero: portfolio summary -->
+    <section class="summary" aria-label="Portfolio summary">
+      <div class="summary__row">
+
+        <div class="summary__card summary__card--primary">
+          <span class="summary__label">Current Value</span>
+          <div class="summary__figure">
+            <span class="summary__currency">$</span>
+            <span class="summary__amount" id="current-value">
+              <span class="skeleton skeleton--lg"></span>
+            </span>
+          </div>
+          <span class="summary__sub" id="value-asof">As of —</span>
+        </div>
+
+        <div class="summary__card">
+          <span class="summary__label">Total Invested</span>
+          <div class="summary__figure summary__figure--mid">
+            <span class="summary__currency">$</span>
+            <span class="summary__amount" id="amount-invested">
+              <span class="skeleton skeleton--md"></span>
+            </span>
+          </div>
+        </div>
+
+        <div class="summary__card">
+          <span class="summary__label">Net Gain / Loss</span>
+          <div class="summary__figure summary__figure--mid">
+            <span class="summary__amount" id="net-gain">
+              <span class="skeleton skeleton--md"></span>
+            </span>
+          </div>
+          <span class="summary__sub" id="net-gain-pct"></span>
+        </div>
+
+      </div>
+
+      <div class="ledger-line" aria-hidden="true">
+        <span class="ledger-line__tick" id="ledger-pulse"></span>
+      </div>
+    </section>
+
+    <!-- Value over time chart -->
+    <section class="chart-section" aria-label="Portfolio value over time">
+      <div class="chart-section__head">
+        <h2 class="chart-section__title">Value Over Time</h2>
+        <div class="chart-section__range" id="chart-range" role="group" aria-label="Chart time range">
+          <button type="button" class="chart-range__btn" data-range="3m">3M</button>
+          <button type="button" class="chart-range__btn" data-range="1y">1Y</button>
+          <button type="button" class="chart-range__btn is-active" data-range="all">All</button>
+        </div>
+      </div>
+      <div class="chart-section__canvas-wrap">
+        <canvas id="value-chart" height="220"></canvas>
+        <p class="chart-section__empty" id="chart-empty" hidden>
+          No history yet. Once your administrator updates your portfolio value, changes will appear here over time.
+        </p>
+      </div>
+    </section>
+
+    <!-- Holdings table -->
+    <section class="holdings" aria-label="Holdings by asset class">
+      <div class="holdings__head">
+        <h2 class="holdings__title">Holdings</h2>
+        <span class="holdings__count" id="holdings-count"></span>
+      </div>
+
+      <div class="holdings__table" role="table">
+        <div class="holdings__row holdings__row--head" role="row">
+          <span role="columnheader">Asset Class / Project</span>
+          <span role="columnheader">Invested</span>
+          <span role="columnheader">Current Value</span>
+          <span role="columnheader">Change</span>
+        </div>
+
+        <div id="holdings-body">
+          <!-- Skeleton rows shown while loading -->
+          <div class="holdings__row holdings__row--skeleton" role="row">
+            <span><span class="skeleton skeleton--sm"></span></span>
+            <span><span class="skeleton skeleton--sm"></span></span>
+            <span><span class="skeleton skeleton--sm"></span></span>
+            <span><span class="skeleton skeleton--sm"></span></span>
+          </div>
+          <div class="holdings__row holdings__row--skeleton" role="row">
+            <span><span class="skeleton skeleton--sm"></span></span>
+            <span><span class="skeleton skeleton--sm"></span></span>
+            <span><span class="skeleton skeleton--sm"></span></span>
+            <span><span class="skeleton skeleton--sm"></span></span>
+          </div>
+        </div>
+      </div>
+
+      <p class="holdings__empty" id="holdings-empty" hidden>
+        No holdings on file yet. Your advisor will populate this once your first position is recorded.
+      </p>
+    </section>
+
+    <footer class="footnote">
+      <p>Figures reflect the latest values recorded by your portfolio administrator and may not represent real-time market pricing. For questions about a specific holding, contact your relationship manager.</p>
+    </footer>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
