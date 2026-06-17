@@ -1,347 +1,552 @@
-// app.js
-// -----------------------------------------------------------------------
-// Fetches the logged-in investor's profile (ACF fields) and holdings
-// (custom taxonomy entries) from the headless WordPress REST API and
-// renders them into the page.
-// -----------------------------------------------------------------------
+:root {
+  /* Color */
+  --ink: #11161F;
+  --panel: #161D29;
+  --panel-raised: #1C2433;
+  --hairline: #2A3344;
+  --paper: #F4F1EA;
+  --gold: #C9A24B;
+  --gold-soft: rgba(201, 162, 75, 0.18);
+  --positive: #6FBF8B;
+  --negative: #E08673;
+  --text-primary: #F4F1EA;
+  --text-muted: #8C96A8;
+  --text-faint: #5C6577;
 
-(() => {
-  const els = {
-    banner: document.getElementById("status-banner"),
-    statusText: document.getElementById("status-text"),
-    retryBtn: document.getElementById("retry-btn"),
-    logoutBtn: document.getElementById("logout-btn"),
-    investorName: document.getElementById("investor-name"),
-    currentValue: document.getElementById("current-value"),
-    amountInvested: document.getElementById("amount-invested"),
-    netGain: document.getElementById("net-gain"),
-    netGainPct: document.getElementById("net-gain-pct"),
-    valueAsOf: document.getElementById("value-asof"),
-    holdingsBody: document.getElementById("holdings-body"),
-    holdingsEmpty: document.getElementById("holdings-empty"),
-    holdingsCount: document.getElementById("holdings-count"),
-    chartCanvas: document.getElementById("value-chart"),
-    chartEmpty: document.getElementById("chart-empty"),
-    chartRange: document.getElementById("chart-range"),
-  };
+  /* Type */
+  --font-display: 'Fraunces', serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-ui: 'Inter', sans-serif;
 
-  let chartInstance = null;
-  let fullHistory = [];
-  let activeRange = "all";
+  /* Layout */
+  --radius: 6px;
+  --max-width: 980px;
+}
 
-  const currencyFormatter = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+* {
+  box-sizing: border-box;
+}
 
-  const dateFormatter = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+html, body {
+  margin: 0;
+  padding: 0;
+}
 
-  function getToken() {
-    return localStorage.getItem(WP_CONFIG.AUTH_TOKEN_KEY);
+body {
+  background: var(--ink);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Topbar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+
+.topbar__name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: 0.01em;
+}
+
+.topbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.topbar__label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+
+.topbar__user {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.topbar__logout {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.topbar__logout:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.topbar__logout:focus-visible,
+.banner__retry:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ---------- Shell ---------- */
+
+.shell {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+/* ---------- Status banner ---------- */
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(224, 134, 115, 0.1);
+  border: 1px solid rgba(224, 134, 115, 0.35);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 28px;
+}
+
+.banner__text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--negative);
+}
+
+.banner__retry {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--negative);
+  color: var(--negative);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.banner__retry:hover {
+  background: var(--negative);
+  color: var(--ink);
+}
+
+/* ---------- Summary ---------- */
+
+.summary {
+  margin-bottom: 48px;
+}
+
+.summary__row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.summary__card {
+  background: var(--panel);
+  padding: 28px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary__card--primary {
+  background: var(--panel-raised);
+}
+
+.summary__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.summary__figure {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.summary__figure--mid {
+  font-size: 30px;
+}
+
+.summary__currency {
+  font-size: 0.5em;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  position: relative;
+  top: -0.35em;
+}
+
+.summary__amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.summary__amount.is-positive {
+  color: var(--positive);
+}
+
+.summary__amount.is-negative {
+  color: var(--negative);
+}
+
+.summary__sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* Ledger pulse line — the signature element */
+
+.ledger-line {
+  position: relative;
+  height: 1px;
+  margin-top: 18px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.ledger-line__tick {
+  position: absolute;
+  top: 0;
+  left: -120px;
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  animation: ledger-sweep 5.5s ease-in-out infinite;
+}
+
+@keyframes ledger-sweep {
+  0%   { left: -120px; }
+  50%  { left: 100%; }
+  100% { left: 100%; }
+}
+
+/* ---------- Chart section ---------- */
+
+.chart-section {
+  margin-bottom: 48px;
+}
+
+.chart-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.chart-section__title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.chart-section__range {
+  display: flex;
+  gap: 4px;
+}
+
+.chart-range__btn {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.chart-range__btn:hover {
+  border-color: var(--gold);
+  color: var(--text-primary);
+}
+
+.chart-range__btn.is-active {
+  background: var(--gold-soft);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.chart-range__btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.chart-section__canvas-wrap {
+  position: relative;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 20px;
+  min-height: 220px;
+}
+
+.chart-section__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 40px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ---------- Holdings ---------- */
+
+.holdings__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.holdings__title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.holdings__count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.holdings__table {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.holdings__row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--hairline);
+  align-items: center;
+}
+
+.holdings__row:last-child {
+  border-bottom: none;
+}
+
+.holdings__row--head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: var(--panel);
+}
+
+.holdings__row:not(.holdings__row--head):not(.holdings__row--skeleton) {
+  font-size: 14px;
+}
+
+.holdings__row:not(.holdings__row--head):nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.holdings__asset {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.holdings__figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.holdings__change.is-positive {
+  color: var(--positive);
+}
+
+.holdings__change.is-negative {
+  color: var(--negative);
+}
+
+.holdings__change {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.holdings__empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 32px 20px;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--radius);
+  margin-top: 16px;
+}
+
+/* ---------- Skeleton loading ---------- */
+
+.skeleton {
+  display: inline-block;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--hairline) 25%, var(--panel-raised) 50%, var(--hairline) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+.skeleton--lg {
+  width: 220px;
+  height: 44px;
+}
+
+.skeleton--md {
+  width: 140px;
+  height: 30px;
+}
+
+.skeleton--sm {
+  width: 80px;
+  height: 16px;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ledger-line__tick,
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* ---------- Footnote ---------- */
+
+.footnote {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+}
+
+.footnote p {
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 640px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
-  function authHeaders() {
-    const token = getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  .topbar__meta {
+    width: 100%;
+    justify-content: space-between;
   }
 
-  async function apiFetch(path) {
-    const res = await fetch(`${WP_CONFIG.BASE_URL}${path}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      },
-      credentials: "omit",
-    });
-
-    if (res.status === 401 || res.status === 403) {
-      throw new ApiError("Your session has expired. Please log in again.", "auth");
-    }
-
-    if (!res.ok) {
-      throw new ApiError(`Request failed (${res.status}). Please try again.`, "server");
-    }
-
-    return res.json();
+  .summary__row {
+    grid-template-columns: 1fr;
   }
 
-  class ApiError extends Error {
-    constructor(message, kind) {
-      super(message);
-      this.kind = kind;
-    }
+  .summary__figure {
+    font-size: 36px;
   }
 
-  function showBanner(message) {
-    els.statusText.textContent = message;
-    els.banner.hidden = false;
+  .holdings__row {
+    grid-template-columns: 1.6fr 1fr 1fr;
+    font-size: 13px;
   }
 
-  function hideBanner() {
-    els.banner.hidden = true;
+  .holdings__row--head span:nth-child(4),
+  .holdings__row:not(.holdings__row--head):not(.holdings__row--skeleton) .holdings__change {
+    display: none;
   }
 
-  function formatCurrency(value) {
-    const num = Number(value) || 0;
-    return currencyFormatter.format(Math.abs(num));
+  .holdings__row--skeleton span:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .shell {
+    padding: 28px 16px 48px;
   }
 
-  function setFigure(el, value, { signed = false } = {}) {
-    const num = Number(value) || 0;
-    el.classList.remove("is-positive", "is-negative");
-
-    if (signed) {
-      const sign = num > 0 ? "+" : num < 0 ? "−" : "";
-      el.textContent = `${sign}$${formatCurrency(num)}`;
-      if (num > 0) el.classList.add("is-positive");
-      if (num < 0) el.classList.add("is-negative");
-    } else {
-      el.textContent = formatCurrency(num);
-    }
+  .summary__figure {
+    font-size: 30px;
   }
 
-  function renderSummary({ name, amountInvested, currentValue }) {
-    els.investorName.textContent = name || "Investor";
-
-    const invested = Number(amountInvested) || 0;
-    const current = Number(currentValue) || 0;
-    const gain = current - invested;
-    const gainPct = invested !== 0 ? (gain / invested) * 100 : 0;
-
-    setFigure(els.currentValue, current);
-    setFigure(els.amountInvested, invested);
-    setFigure(els.netGain, gain, { signed: true });
-
-    els.netGainPct.textContent =
-      invested !== 0
-        ? `${gainPct > 0 ? "+" : ""}${gainPct.toFixed(2)}% all-time`
-        : "";
-
-    els.valueAsOf.textContent = `As of ${dateFormatter.format(new Date())}`;
+  .holdings__row {
+    padding: 14px 14px;
+    gap: 10px;
   }
-
-  function renderHoldings(holdings) {
-    els.holdingsBody.innerHTML = "";
-
-    if (!holdings || holdings.length === 0) {
-      els.holdingsEmpty.hidden = false;
-      els.holdingsCount.textContent = "";
-      return;
-    }
-
-    els.holdingsEmpty.hidden = true;
-    els.holdingsCount.textContent = `${holdings.length} position${holdings.length === 1 ? "" : "s"}`;
-
-    holdings.forEach((item) => {
-      const invested = Number(item.amount_invested) || 0;
-      const current = Number(item.current_value) || 0;
-      const change = invested !== 0 ? ((current - invested) / invested) * 100 : 0;
-      const changeClass = change > 0 ? "is-positive" : change < 0 ? "is-negative" : "";
-      const changeSign = change > 0 ? "+" : "";
-
-      const row = document.createElement("div");
-      row.className = "holdings__row";
-      row.setAttribute("role", "row");
-      row.innerHTML = `
-        <span class="holdings__asset">${escapeHtml(item.label || "Untitled")}</span>
-        <span class="holdings__figure">$${formatCurrency(invested)}</span>
-        <span class="holdings__figure">$${formatCurrency(current)}</span>
-        <span class="holdings__change ${changeClass}">${changeSign}${change.toFixed(2)}%</span>
-      `;
-      els.holdingsBody.appendChild(row);
-    });
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  function filterHistoryByRange(history, range) {
-    if (range === "all" || history.length === 0) return history;
-
-    const now = new Date();
-    const cutoff = new Date(now);
-
-    if (range === "3m") cutoff.setMonth(cutoff.getMonth() - 3);
-    if (range === "1y") cutoff.setFullYear(cutoff.getFullYear() - 1);
-
-    const filtered = history.filter((p) => new Date(p.date) >= cutoff);
-
-    // Always keep at least one point before the cutoff so the line
-    // doesn't start mid-air with no context.
-    if (filtered.length === 0 && history.length > 0) {
-      return [history[history.length - 1]];
-    }
-    if (filtered.length > 0) {
-      const firstKeptIndex = history.indexOf(filtered[0]);
-      if (firstKeptIndex > 0) {
-        return [history[firstKeptIndex - 1], ...filtered];
-      }
-    }
-    return filtered;
-  }
-
-  function renderChart(history) {
-    fullHistory = Array.isArray(history) ? [...history] : [];
-
-    // Sort by date ascending in case the backend doesn't guarantee order.
-    fullHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    if (fullHistory.length === 0) {
-      els.chartEmpty.hidden = false;
-      els.chartCanvas.style.display = "none";
-      return;
-    }
-
-    els.chartEmpty.hidden = true;
-    els.chartCanvas.style.display = "block";
-
-    drawChart(filterHistoryByRange(fullHistory, activeRange));
-  }
-
-  function drawChart(points) {
-    const labels = points.map((p) =>
-      new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "2-digit" }).format(
-        new Date(p.date)
-      )
-    );
-    const values = points.map((p) => Number(p.value) || 0);
-
-    const first = values[0];
-    const last = values[values.length - 1];
-    const lineColor = last >= first ? "#6FBF8B" : "#E08673";
-
-    const ctx = els.chartCanvas.getContext("2d");
-
-    if (chartInstance) {
-      chartInstance.destroy();
-    }
-
-    chartInstance = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [
-          {
-            data: values,
-            borderColor: lineColor,
-            backgroundColor: "transparent",
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointHoverBackgroundColor: lineColor,
-            tension: 0.25,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: "#1C2433",
-            borderColor: "#2A3344",
-            borderWidth: 1,
-            titleFont: { family: "'IBM Plex Mono', monospace", size: 11 },
-            bodyFont: { family: "'IBM Plex Mono', monospace", size: 12 },
-            padding: 10,
-            callbacks: {
-              label: (ctx) => `$${ctx.parsed.y.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            },
-          },
-        },
-        scales: {
-          x: {
-            grid: { color: "#2A3344", drawTicks: false },
-            ticks: { color: "#8C96A8", font: { family: "'IBM Plex Mono', monospace", size: 10 }, maxRotation: 0 },
-            border: { color: "#2A3344" },
-          },
-          y: {
-            grid: { color: "#2A3344", drawTicks: false },
-            ticks: {
-              color: "#8C96A8",
-              font: { family: "'IBM Plex Mono', monospace", size: 10 },
-              callback: (val) => `$${Number(val).toLocaleString("en-US")}`,
-            },
-            border: { display: false },
-          },
-        },
-      },
-    });
-  }
-
-  async function loadPortfolio() {
-    hideBanner();
-
-    try {
-      // Investor profile + ACF fields (amount_invested, current_value)
-      const me = await apiFetch(WP_CONFIG.ENDPOINTS.me);
-
-      const acf = me.acf || {};
-      renderSummary({
-        name: me.name,
-        amountInvested: acf[WP_CONFIG.FIELDS.amountInvested],
-        currentValue: acf[WP_CONFIG.FIELDS.currentValue],
-      });
-
-      renderChart(acf[WP_CONFIG.FIELDS.valueHistory]);
-
-      // Per-asset-class holdings from the custom taxonomy endpoint
-      const holdings = await apiFetch(WP_CONFIG.ENDPOINTS.holdings);
-      renderHoldings(holdings);
-    } catch (err) {
-      if (err instanceof ApiError && err.kind === "auth") {
-        showBanner(err.message);
-        // Redirect to login after a short pause
-        setTimeout(() => {
-          localStorage.removeItem(WP_CONFIG.AUTH_TOKEN_KEY);
-          window.location.href = "/login.html";
-        }, 1500);
-        return;
-      }
-
-      showBanner(
-        err.message || "Couldn't load your portfolio. Please try again."
-      );
-    }
-  }
-
-  els.retryBtn.addEventListener("click", loadPortfolio);
-
-  els.chartRange.addEventListener("click", (e) => {
-    const btn = e.target.closest(".chart-range__btn");
-    if (!btn) return;
-
-    activeRange = btn.dataset.range;
-
-    els.chartRange.querySelectorAll(".chart-range__btn").forEach((b) =>
-      b.classList.toggle("is-active", b === btn)
-    );
-
-    if (fullHistory.length > 0) {
-      drawChart(filterHistoryByRange(fullHistory, activeRange));
-    }
-  });
-
-  els.logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem(WP_CONFIG.AUTH_TOKEN_KEY);
-    window.location.href = "/login.html";
-  });
-
-  // Guard: if there's no token at all, send straight to login.
-  if (!getToken()) {
-    window.location.href = "/login.html";
-  } else {
-    loadPortfolio();
-  }
-})();
+}
