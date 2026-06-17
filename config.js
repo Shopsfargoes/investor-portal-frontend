@@ -7,7 +7,7 @@
 const WP_CONFIG = {
   // Root of your WordPress REST API, no trailing slash.
   // e.g. "https://your-wp-backend.up.railway.app/wp-json"
-  BASE_URL: "https://your-wp-backend.example.com/wp-json",
+  BASE_URL: "https://investor.free.nf/wp-json",
 
   // Custom taxonomy slug used for asset classes / project names.
   TAXONOMY: "investment_type",
