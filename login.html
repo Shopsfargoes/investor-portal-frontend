@@ -1,1 +1,171 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investor Portal · Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .login-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--panel);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+    }
+    .login-card__mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--gold);
+      border-radius: var(--radius);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+    .login-card h1 {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 24px;
+      margin: 0 0 6px;
+    }
+    .login-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0 0 24px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .field label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .field input {
+      background: var(--ink);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius);
+      padding: 11px 12px;
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      font-size: 14px;
+    }
+    .field input:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 1px;
+    }
+    .login-submit {
+      width: 100%;
+      background: var(--gold);
+      color: var(--ink);
+      border: none;
+      border-radius: var(--radius);
+      padding: 12px;
+      font-family: var(--font-ui);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.15s ease;
+    }
+    .login-submit:hover { opacity: 0.9; }
+    .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error {
+      color: var(--negative);
+      font-size: 13px;
+      margin: 12px 0 0;
+      display: none;
+    }
+    .login-error.is-visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <span class="login-card__mark">VR</span>
+      <h1>Investor sign in</h1>
+      <p>Enter the credentials provided by your portfolio administrator.</p>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="username">Username or email</label>
+          <input type="text" id="username" name="username" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required />
+        </div>
+        <button class="login-submit" type="submit" id="login-submit">Sign in</button>
+        <p class="login-error" id="login-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const form = document.getElementById("login-form");
+    const errorEl = document.getElementById("login-error");
+    const submitBtn = document.getElementById("login-submit");
+
+    // If already signed in, skip straight to the portal.
+    if (localStorage.getItem(WP_CONFIG.AUTH_TOKEN_KEY)) {
+      window.location.href = "/index.html";
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.classList.remove("is-visible");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Signing in…";
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+
+      try {
+        // Requires a JWT auth plugin (e.g. "JWT Authentication for WP REST API")
+        // exposing /wp-json/jwt-auth/v1/token on the WordPress backend.
+        const res = await fetch(`${WP_CONFIG.BASE_URL}/jwt-auth/v1/token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Invalid username or password.");
+        }
+
+        const data = await res.json();
+        localStorage.setItem(WP_CONFIG.AUTH_TOKEN_KEY, data.token);
+        window.location.href = "/index.html";
+      } catch (err) {
+        errorEl.textContent = err.message || "Sign in failed. Please try again.";
+        errorEl.classList.add("is-visible");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign in";
+      }
+    });
+  </script>
+</body>
+</html>
