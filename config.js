@@ -1,13 +1,18 @@
 // config.js
 // -----------------------------------------------------------------------
 // Central place to point the frontend at your headless WordPress backend.
-// Edit BASE_URL after deploying WordPress (Railway / Hostinger / etc).
+// All requests go through the Vercel proxy (/api/proxy) to bypass CORS
+// restrictions on InfinityFree hosting.
 // -----------------------------------------------------------------------
 
 const WP_CONFIG = {
   // Root of your WordPress REST API, no trailing slash.
-  // e.g. "https://your-wp-backend.up.railway.app/wp-json"
+  // Used by the server-side proxy only — not called directly from browser.
   BASE_URL: "https://investor.free.nf/wp-json",
+
+  // Vercel proxy endpoint — all frontend fetch() calls go here instead
+  // of calling WordPress directly, bypassing InfinityFree CORS blocks.
+  PROXY_URL: "/api/proxy",
 
   // Custom taxonomy slug used for asset classes / project names.
   TAXONOMY: "investment_type",
@@ -19,15 +24,12 @@ const WP_CONFIG = {
     valueHistory: "value_history"
   },
 
-  // How investor authentication is handled. This demo expects a JWT
-  // (e.g. via the "JWT Authentication for WP REST API" plugin) stored
-  // in localStorage after login, sent as "Authorization: Bearer <token>".
+  // How investor authentication is handled.
   AUTH_TOKEN_KEY: "investor_portal_token",
 
-  // WordPress REST endpoint that returns the logged-in investor's
-  // profile + ACF fields + holdings. Adjust to match your custom
-  // endpoint (e.g. registered via register_rest_route in functions.php).
+  // WordPress REST endpoints (passed as ?path= to the proxy).
   ENDPOINTS: {
+    token: "/jwt-auth/v1/token",
     me: "/wp/v2/users/me?context=edit",
     holdings: "/custom/v1/holdings"
   }
