@@ -52,12 +52,12 @@
   }
 
   async function apiFetch(path) {
-    const res = await fetch(`${WP_CONFIG.BASE_URL}${path}`, {
+    const res = await fetch(`${WP_CONFIG.PROXY_URL}?path=${encodeURIComponent(path)}`, {
+      method: 'GET',
       headers: {
         "Content-Type": "application/json",
         ...authHeaders(),
       },
-      credentials: "omit",
     });
 
     if (res.status === 401 || res.status === 403) {
