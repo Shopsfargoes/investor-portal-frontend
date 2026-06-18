@@ -143,9 +143,8 @@
       const password = document.getElementById("password").value;
 
       try {
-        // Requires a JWT auth plugin (e.g. "JWT Authentication for WP REST API")
-        // exposing /wp-json/jwt-auth/v1/token on the WordPress backend.
-        const res = await fetch(`${WP_CONFIG.BASE_URL}/jwt-auth/v1/token`, {
+        // Requires a JWT auth plugin exposing /jwt-auth/v1/token
+        const res = await fetch(`${WP_CONFIG.PROXY_URL}?path=${WP_CONFIG.ENDPOINTS.token}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password }),
